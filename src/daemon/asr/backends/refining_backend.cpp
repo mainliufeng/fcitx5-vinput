@@ -107,6 +107,10 @@ private:
     }
     for (auto& event : primary_->PollEvents()) {
       switch (event.kind) {
+      case RecognitionEventKind::FinalText:
+        primary_final_ = event.text;
+        events_.push_back(std::move(event));
+        break;
       case RecognitionEventKind::Completed:
         break;
       default:
@@ -127,22 +131,31 @@ private:
     }
 
     bool refined = false;
+    std::string refined_text;
     for (auto& event : refine_->PollEvents()) {
       if (event.kind == RecognitionEventKind::FinalText && !event.text.empty()) {
         refined = true;
-        events_.push_back(std::move(event));
+        refined_text = event.text;
       }
     }
-    if (refined) {
-      debug::Log("vinput: second pass replaced the streaming result samples=%zu\n",
-                 utterance_.size());
+    if (!refined) {
+      debug::Log("vinput: second pass produced no text, keeping the streaming result\n");
+      return;
     }
+
+    // Logged so the second pass can be judged against its latency cost.
+    debug::Log("vinput: second pass replaced the streaming result samples=%zu\n",
+               utterance_.size());
+    debug::Log("vinput:   pass 1 (streaming): %s\n", primary_final_.c_str());
+    debug::Log("vinput:   pass 2 (refined):   %s\n", refined_text.c_str());
+    events_.push_back({RecognitionEventKind::FinalText, std::move(refined_text), {}});
   }
 
   std::unique_ptr<RecognitionSession> primary_;
   std::unique_ptr<RecognitionSession> refine_;
   std::vector<int16_t> utterance_;
   std::vector<RecognitionEvent> events_;
+  std::string primary_final_;
   bool finished_ = false;
 };
 
