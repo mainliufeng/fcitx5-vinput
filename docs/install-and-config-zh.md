@@ -457,7 +457,6 @@ vinput scene use tech-polish    # 激活；用 __raw__ 可随时关掉
 > ```
 > postprocess scene=tech-polish candidates=1 committed_from=llm menu=no
 > ```
-```
 
 dotfiles 里带一份现成的 `polish-prompt.md`，它的约束是关键：
 
