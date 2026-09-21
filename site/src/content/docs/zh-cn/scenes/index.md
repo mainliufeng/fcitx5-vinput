@@ -90,6 +90,37 @@ vinput scene remove <id>        # 删除场景
 
 添加带 LLM 的场景时，`--provider`、`--model`、`--prompt` 需要同时提供。
 
+### 写 prompt 的两个坑
+
+**一、去重是精确字符串比较。**
+
+改写结果会先与 ASR 原文做保序去重，而比较是**逐字**的——多一个或少一个字符就算"不同表达"，于是弹出候选菜单。
+中文 ASR（如 sherpa-onnx 的 X-ASR）习惯在中文逗号后插一个空格：`就是特别好， 就是好像…`。
+LLM 很容易顺手把这个空格去掉，结果**几乎每句都被判定为有改动**。
+
+所以在 prompt 里明写一句保留格式的约束：
+
+```text
+- Keep the punctuation and spacing of the input exactly as it is.
+  Do not add or remove spaces, and do not touch commas, full stops or
+  question marks that are already there.
+- If nothing needs fixing, return the input unchanged, character for character.
+```
+
+实测：加上这两句后，本来就正确的句子会**逐字返回**，不再误弹菜单。
+
+**二、纠错类场景要主动限制改写范围。**
+
+如果不加约束，LLM 会"顺便"把口语理顺、把句子重排——那就不是语音输入而是改写了。
+对纯纠错场景，建议显式列出允许改的种类（同音字、英文术语、大小写、标点），
+并加上"不确定就保留原文"。
+
+> 如果后端是推理模型（如 DeepSeek Flash），记得用 provider 的 `extra-body` 关掉思考链：
+> ```bash
+> vinput llm add deepseek -u <url> -k <key> -e '{"thinking":{"type":"disabled"}}'
+> ```
+> 实测同一句纠错：开关推理链的差异是 **0.6–0.9 s 对 2.6–51 s**，而准确率没有区别。
+
 ## LLM 提供商
 
 ### 概念

@@ -376,6 +376,90 @@ vinput-gui
 
 ---
 
+### 3.7 LLM 后处理（纠错与术语还原）
+
+热词只能做**解码期偏置**，纠不回同音字和它没见过的术语。这类错误交给 LLM 后处理——
+这也是豆包、微信输入法在云端做的第三步（大模型 ASR → 上下文注入 → **LLM 改写**）。
+
+#### 概念
+
+```
+ASR 原始文本 → [场景 prompt + LLM] → 改写后的文本
+```
+
+- **场景（scene）** = prompt + 绑定的 provider + model
+- **LLM provider** = 一个 OpenAI 兼容端点（**地址可配**，不限于官方 API）
+- 去重后若 LLM 结果与原文完全相同 → **直接上屏，不弹菜单**
+- 若不同 → 弹候选菜单，**默认高亮 LLM 版**，按 `1` 可随时选回 ASR 原文
+
+#### 配置一个 provider（任意 OpenAI 兼容地址）
+
+```bash
+vinput llm add deepseek \
+  -u "https://api.deepseek.com/v1" \
+  -k "$DEEPSEEK_API_KEY" \
+  -e '{"thinking":{"type":"disabled"}}'      # 可选：合并进每次请求体
+
+vinput llm test deepseek     # 验证连通性，会列出可用模型
+```
+
+`-e/--extra-body` 可以合并任意字段进请求体，用来适配不同后端的参数习惯。
+
+> ⚠️ **实测：关掉推理链是必须的。** DeepSeek Flash 默认会输出 `reasoning_content`，
+> 同一句纠错实测：**开推理 ≈ 2.6–51 s，关推理 ≈ 0.6–0.9 s**。推理链对这类
+> "改错字"任务没有任何帮助，只是白白增加延迟和 token。
+
+#### 配置"纠错"场景
+
+```bash
+vinput scene add --id tech-polish \
+  --label "技术纠错" \
+  --prompt "$(cat polish-prompt.md)" \
+  --provider deepseek --model deepseek-flash \
+  --count 1 --timeout 15000 --context-lines 0
+
+vinput scene use tech-polish    # 激活；用 __raw__ 可随时关掉
+```
+
+dotfiles 里带一份现成的 `polish-prompt.md`，它的约束是关键：
+
+| 约束 | 为什么 |
+|---|---|
+| 只改识别错误（同音字 / 英文术语 / 大小写 / 标点） | 避免把输入法变成"改写器" |
+| **保持输入的标点与空格完全不变** | ⚠️ 关键：去重是**精确字符串比较**。不加这条，LLM 会把 ASR 在中文逗号后插的空格去掉，导致几乎每句都判定为"有改动"而弹菜单 |
+| 不确定就保留原文 | 避免编造；模棱两可的同音字宁可不动 |
+| 只输出结果，不要解释 | prompt 会被框架再包一层要求 JSON `{"candidates":[...]}` |
+
+#### 实测效果
+
+| 输入（ASR 原文） | LLM 输出 |
+|---|---|
+| `我平时会用 SKILL 这个功能然后把它 布置 到 RAIPPLE 里边这段是流逝的输出去` | `…skill 这个功能然后把它 push 到 repo 里边这段是流式的输出去` |
+| `子鸡就是在那个…就是感觉是演得特别好` | `自己就是在那个…就是感觉是演得特别好` |
+| `就是平凡的啊， 不认识记下来， frequently 平凡的` | `就是频繁的啊， 不认识记下来， frequently 频繁的` |
+| `我平时会用 skill 这个功能， 然后把它 push 到 repo 里面。`（本来就对） | **逐字不变**（不弹菜单） |
+
+延迟：约 **0.6–0.9 s/句**（推理链关闭、DeepSeek Flash）。
+
+#### 失败时的行为
+
+LLM 请求失败/超时 → **保留 ASR 原文**，不会丢句子。
+
+> ⚠️ 已知限制：**连接超时硬编码为 5 s**（`kDefaultConnectTimeoutMs`，
+> 实际取 `min(场景 timeout, 5000)`），无法从配置调大。API 网络拥塞时会看到
+> `failed after 5001ms: Timeout was reached`，此时回退到未经纠错的原文。
+>
+> ⚠️ 另一个安全问题：`VINPUT_DEBUG=1` 时日志会**明文打印 `Authorization: Bearer <key>`**，
+> 开调试日志时注意别把日志贴出去。
+
+#### 关闭
+
+```bash
+vinput scene use __raw__     # 回到纯 ASR，零额外延迟
+```
+
+---
+
 ## 4. 使用
 
 vinput 是 fcitx5 的 **Module**，不是可选输入法——**不需要切换到它**。
