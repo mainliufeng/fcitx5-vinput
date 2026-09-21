@@ -19,6 +19,8 @@ Vinput provides three complementary ASR mechanisms:
 
 Local models and cloud providers are **mutually exclusive** — switch between them at runtime from the command palette (`Shift_R` → `/asr`). Hotwords take effect when a local model is active.
 
+Local models can additionally be combined into a **two-pass relay**: a streaming model keeps text appearing while you speak, and a second offline model re-decodes the same audio at release to finalise it (see “Second-pass refinement” below).
+
 ## Local models
 
 ### Concept
@@ -59,6 +61,92 @@ vinput model use <name>         # Activate
 vinput model remove <name>      # Uninstall
 vinput model info <name>        # View details
 ```
+
+## Second-pass refinement
+
+### Concept
+
+Local models force a trade-off between two paths:
+
+- **Streaming models** — text appears while you speak, low latency; but they are usually smaller, and proper nouns or mixed Chinese/English are error-prone.
+- **Offline models** — transcribe the whole utterance with clearly better accuracy; but nothing appears until you stop.
+
+Second-pass refinement turns them into a **relay**: a streaming model keeps the live preview during recording (pass 1), and at release a second offline model re-decodes the **same audio** once (pass 2). Pass 2 decides the committed text.
+
+```
+Audio ─┬─ pass 1: streaming model ──→ live preedit (while speaking)
+       └─ pass 2: offline model   ──→ committed text (+150–250 ms after release)
+```
+
+The second pass is emitted as the **last `FinalText`**, so it replaces the streaming result and still flows through the normal scene / LLM rewriting.
+
+### Configuration
+
+Add `refine_model` to the local provider, pointing at an **installed offline model**:
+
+```json
+{
+  "asr": {
+    "providers": [
+      {
+        "id": "sherpa-onnx",
+        "type": "local",
+        "model": "model.sherpa-onnx.x-asr-960ms-streaming-zipformer-transducer-zh-en-punct-int8",
+        "refine_model": "model.sherpa-onnx.x-asr-zipformer-transducer-zh-en-punct-int8",
+        "timeout_ms": 15000
+      }
+    ]
+  }
+}
+```
+
+Leaving `refine_model` unset (or empty) keeps the previous behaviour: streaming only.
+
+### CLI
+
+```bash
+vinput refine get               # Show the current refinement model
+vinput refine set <name>        # Set it (accepts the short ID and resolves it)
+vinput refine clear             # Disable refinement, back to streaming only
+```
+
+### Choosing a refinement model
+
+1. **It must be an offline (`sherpa-offline`) model.** Passing a streaming model is rejected and the session quietly falls back to streaming only.
+2. **Prefer a model from the same family as pass 1, and one that handles both languages.** This matters most for mixed Chinese/English speech:
+
+| Refinement model | Result |
+|---|---|
+| Same-family offline model (e.g. the offline X-ASR export) | ✅ Chinese, English, punctuation and casing all keep or improve |
+| A Chinese-leaning single-language model (e.g. SenseVoice) | ❌ Corrupts English that pass 1 already got right: `repo`→`RAIPPLE`, `prompt`→`PROMT`, `push`→`布置`, and upper-cases all English |
+
+The precondition for a second pass is that **it must not be worse than the first**. A Chinese model with weak English vocabulary will actively damage correct English words.
+
+### Fallback behaviour
+
+The second pass is a best-effort optimisation, never a correctness dependency:
+
+- If the refinement model is missing, fails to load, or returns no text, the streaming result is kept silently.
+- No error in the second pass can drop an utterance.
+
+To confirm the second pass is running, enable debug logging:
+
+```bash
+journalctl --user -u vinput-daemon | grep -E 'pass 1|pass 2' | tail -4
+```
+
+Example output:
+
+```
+vinput:   pass 1 (streaming): 我平时会 skill 这个功能， 然后把它 push 到 repo 里边
+vinput:   pass 2 (refined):   我平时会 skill 这个功能， 然后把它 push 到 repo 里面。
+```
+
+### Cost
+
+- **Memory**: the refinement model stays resident, roughly +130 MB for an int8 offline X-ASR; zero if unset.
+- **Latency**: +150–250 ms after release (one full re-decode).
+- **First-word latency is unchanged** — pass 1 is still streaming.
 
 ## Cloud providers
 
