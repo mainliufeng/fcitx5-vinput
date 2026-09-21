@@ -50,6 +50,34 @@ void RegisterHotwordCommands(CLI::App& app, CliAction* action) {
 #endif
 
 #if VINPUT_ENABLE_LOCAL_ASR
+void RegisterRefineCommands(CLI::App& app, CliAction* action) {
+  auto* refine = app.add_subcommand("refine", _("Manage the second-pass ASR model"));
+  refine->require_subcommand(1);
+
+  auto* get = refine->add_subcommand("get", _("Show the configured second-pass model"));
+  get->callback([action]() {
+    *action = [](Formatter& fmt, const CliContext& ctx) { return RunAsrConfigGetRefine(fmt, ctx); };
+  });
+
+  auto model = std::make_shared<std::string>();
+  auto* set = refine->add_subcommand("set", _("Set the second-pass model"));
+  set->add_option("model", *model, _("Local model short ID or path"))->required();
+  set->callback([action, model]() {
+    *action = [model](Formatter& fmt, const CliContext& ctx) {
+      return RunAsrConfigSetRefine(*model, fmt, ctx);
+    };
+  });
+
+  auto* clear = refine->add_subcommand("clear", _("Disable the second pass"));
+  clear->callback([action]() {
+    *action = [](Formatter& fmt, const CliContext& ctx) {
+      return RunAsrConfigClearRefine(fmt, ctx);
+    };
+  });
+}
+#endif
+
+#if VINPUT_ENABLE_LOCAL_ASR
 void RegisterModelCommands(CLI::App& app, CliAction* action) {
   auto* model = app.add_subcommand("model", _("Manage local ASR models"));
   model->require_subcommand(1);

@@ -23,4 +23,7 @@ int RunAsrConfigGetHotword(Formatter& fmt, const CliContext& ctx);
 int RunAsrConfigSetHotword(const std::string& path, Formatter& fmt, const CliContext& ctx);
 int RunAsrConfigClearHotword(Formatter& fmt, const CliContext& ctx);
 int RunAsrConfigEditHotword(Formatter& fmt, const CliContext& ctx);
+int RunAsrConfigGetRefine(Formatter& fmt, const CliContext& ctx);
+int RunAsrConfigSetRefine(const std::string& model, Formatter& fmt, const CliContext& ctx);
+int RunAsrConfigClearRefine(Formatter& fmt, const CliContext& ctx);
 #endif

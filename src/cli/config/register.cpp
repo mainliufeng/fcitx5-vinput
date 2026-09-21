@@ -13,6 +13,7 @@ void RegisterInitCommands(CLI::App& app, CliAction* action);
 #if VINPUT_ENABLE_LOCAL_ASR
 void RegisterHotwordCommands(CLI::App& app, CliAction* action);
 void RegisterModelCommands(CLI::App& app, CliAction* action);
+void RegisterRefineCommands(CLI::App& app, CliAction* action);
 #endif
 void RegisterProviderCommands(CLI::App& app, CliAction* action);
 void RegisterLlmCommands(CLI::App& app, CliAction* action);
@@ -25,6 +26,7 @@ void RegisterConfigCli(CLI::App& app, CliAction* action) {
 #if VINPUT_ENABLE_LOCAL_ASR
   RegisterModelCommands(app, action);
   RegisterHotwordCommands(app, action);
+  RegisterRefineCommands(app, action);
 #endif
   RegisterProviderCommands(app, action);
   RegisterLlmCommands(app, action);

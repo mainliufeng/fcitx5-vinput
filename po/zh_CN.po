@@ -747,6 +747,30 @@ msgstr "设置热词文件路径"
 msgid "Path to hotword file"
 msgstr "热词文件路径"
 
+msgid "Manage the second-pass ASR model"
+msgstr "管理二级精修模型"
+
+msgid "Show the configured second-pass model"
+msgstr "显示已配置的二级精修模型"
+
+msgid "Set the second-pass model"
+msgstr "设置二级精修模型"
+
+msgid "Disable the second pass"
+msgstr "关闭二级精修"
+
+msgid "Local model short ID or path"
+msgstr "本地模型短 ID 或路径"
+
+msgid "No second-pass model configured."
+msgstr "未配置二级精修模型。"
+
+msgid "Second-pass model saved."
+msgstr "二级精修模型已保存。"
+
+msgid "Second-pass model cleared."
+msgstr "二级精修模型已清除。"
+
 msgid "Clear hotword file path"
 msgstr "清除热词文件路径"
 

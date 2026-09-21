@@ -822,6 +822,56 @@ int RunAsrConfigClearHotword(Formatter& fmt, const CliContext& ctx) {
   return 0;
 }
 
+int RunAsrConfigGetRefine(Formatter& fmt, const CliContext& ctx) {
+  CoreConfig config = LoadCoreConfig();
+  const auto* provider = PreferredLocalProvider(config);
+  const std::string refineModel = provider ? provider->refineModel : "";
+
+  if (ctx.json_output) {
+    fmt.PrintJson({{"refine_model", refineModel}});
+    return 0;
+  }
+
+  if (refineModel.empty()) {
+    fmt.PrintInfo(_("No second-pass model configured."));
+  } else {
+    fmt.PrintInfo(refineModel);
+  }
+  return 0;
+}
+
+int RunAsrConfigSetRefine(const std::string& model, Formatter& fmt, const CliContext& ctx) {
+  (void)ctx;
+  CoreConfig config = LoadCoreConfig();
+  auto* provider = PreferredLocalProvider(&config);
+  if (!provider) {
+    fmt.PrintError(_("No local ASR provider configured."));
+    return 1;
+  }
+  provider->refineModel = model;
+  if (!SaveAsrConfigAndReload(config, fmt)) {
+    return 1;
+  }
+  fmt.PrintSuccess(_("Second-pass model saved."));
+  return 0;
+}
+
+int RunAsrConfigClearRefine(Formatter& fmt, const CliContext& ctx) {
+  (void)ctx;
+  CoreConfig config = LoadCoreConfig();
+  auto* provider = PreferredLocalProvider(&config);
+  if (!provider) {
+    fmt.PrintError(_("No local ASR provider configured."));
+    return 1;
+  }
+  provider->refineModel.clear();
+  if (!SaveAsrConfigAndReload(config, fmt)) {
+    return 1;
+  }
+  fmt.PrintSuccess(_("Second-pass model cleared."));
+  return 0;
+}
+
 int RunAsrConfigEditHotword(Formatter& fmt, const CliContext& ctx) {
   (void)ctx;
   CoreConfig config = LoadCoreConfig();
