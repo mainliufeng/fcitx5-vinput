@@ -7,6 +7,7 @@ if(VINPUT_ENABLE_LOCAL_ASR)
 
     set(VINPUT_LOCAL_ASR_SOURCES
         asr/hotword_utils.cpp
+        asr/backends/refining_backend.cpp
         asr/backends/sherpa_offline_backend.cpp
         asr/backends/sherpa_streaming_backend.cpp
         asr/vad_trimmer.cpp
