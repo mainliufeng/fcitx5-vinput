@@ -38,6 +38,11 @@ struct AsrProviderBase {
 struct LocalAsrProvider : AsrProviderBase {
   std::string model;
   std::string hotwordsFile;
+  // Optional second-pass model. When set and `model` resolves to a streaming
+  // backend, the whole utterance is re-decoded with this offline model on
+  // finish, and its text replaces the streaming result. Empty disables the
+  // second pass and preserves the previous behaviour.
+  std::string refineModel;
 };
 
 struct CommandAsrProvider : AsrProviderBase {

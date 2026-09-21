@@ -83,6 +83,9 @@ void to_json(json& j, const LocalAsrProvider& p) {
   if (!p.hotwordsFile.empty()) {
     j["hotwords_file"] = p.hotwordsFile;
   }
+  if (!p.refineModel.empty()) {
+    j["refine_model"] = p.refineModel;
+  }
   if (p.timeoutMs > 0) {
     j["timeout_ms"] = p.timeoutMs;
   }
@@ -92,6 +95,7 @@ void from_json(const json& j, LocalAsrProvider& p) {
   p.id = j.value("id", p.id);
   p.model = j.value("model", p.model);
   p.hotwordsFile = j.value("hotwords_file", p.hotwordsFile);
+  p.refineModel = j.value("refine_model", p.refineModel);
   p.timeoutMs = j.value("timeout_ms", p.timeoutMs);
 }
 
