@@ -765,6 +765,9 @@ msgstr "本地模型短 ID 或路径"
 msgid "No second-pass model configured."
 msgstr "未配置二级精修模型。"
 
+msgid "Provider '%s' references an environment variable that is not set: %s"
+msgstr "Provider '%s' 引用的环境变量未设置：%s"
+
 msgid "Second-pass model set to '%s'."
 msgstr "二级精修模型已设为 '%s'。"
 

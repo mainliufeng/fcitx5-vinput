@@ -10,6 +10,7 @@
 #include "common/config/core_config.h"
 #include "common/i18n.h"
 #include "common/llm/adapter_manager.h"
+#include "common/llm/credentials.h"
 #include "common/llm/defaults.h"
 #include "common/llm/provider_model_cache.h"
 #include "common/registry/registry_i18n.h"
@@ -569,10 +570,17 @@ int RunLlmConfigTest(const std::string& id, Formatter& fmt, const CliContext& ct
   }
 
   struct curl_slist* headers = nullptr;
-  if (!provider->api_key.empty()) {
+  const std::string api_key = vinput::llm::ResolveApiKey(provider->api_key);
+  if (!api_key.empty()) {
     std::string auth = std::string(vinput::llm::kAuthorizationHeader) + ": " +
-                       vinput::llm::kBearerPrefix + provider->api_key;
+                       vinput::llm::kBearerPrefix + api_key;
     headers = curl_slist_append(headers, auth.c_str());
+  } else if (vinput::llm::IsApiKeyFromEnvironment(provider->api_key)) {
+    fmt.PrintError(vinput::str::FmtStr(
+        _("Provider '%s' references an environment variable that is not set: %s"), provider->id,
+        provider->api_key));
+    curl_easy_cleanup(curl);
+    return 1;
   }
 
   std::string response_body;

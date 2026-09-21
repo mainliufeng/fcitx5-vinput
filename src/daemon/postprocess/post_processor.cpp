@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <curl/curl.h>
@@ -16,6 +17,7 @@
 #include "common/asr/recognition_result.h"
 #include "common/config/core_config.h"
 #include "common/config/core_config_types.h"
+#include "common/llm/credentials.h"
 #include "common/llm/defaults.h"
 #include "common/scene/postprocess_scene.h"
 #include "common/utils/debug_log.h"
@@ -131,17 +133,54 @@ void LogLlmInput(const LlmProvider& provider, const std::string& url, std::strin
                      QuoteForLog(text).c_str());
 }
 
+// Header names whose value carries a credential. Any match is replaced by a
+// placeholder so a debug log can be pasted into an issue without leaking a key.
+bool IsCredentialHeader(std::string_view name) {
+  static constexpr std::string_view kCredentialHeaders[] = {
+      "authorization", "proxy-authorization", "api-key", "x-api-key", "cookie",
+  };
+  for (const std::string_view candidate : kCredentialHeaders) {
+    if (name.size() != candidate.size()) {
+      continue;
+    }
+    bool equal = true;
+    for (std::size_t i = 0; i < name.size(); ++i) {
+      const auto lower = static_cast<char>(std::tolower(static_cast<unsigned char>(name[i])));
+      if (lower != candidate[i]) {
+        equal = false;
+        break;
+      }
+    }
+    if (equal) {
+      return true;
+    }
+  }
+  return false;
+}
+
+std::string RedactHeaderLine(std::string_view line) {
+  const std::size_t colon = line.find(':');
+  if (colon == std::string_view::npos) {
+    return std::string(line);
+  }
+  const std::string_view name = line.substr(0, colon);
+  if (!IsCredentialHeader(name)) {
+    return std::string(line);
+  }
+  return std::string(name) + ": <redacted>";
+}
+
 void LogLlmRequest(const LlmProvider& provider, const std::string& url, const curl_slist* headers,
                    std::string_view body) {
-  // Debug-only: dump headers and body verbatim. The API key is included in
-  // plain text since this is gated by VINPUT_DEBUG and intended for local
-  // inspection; users who share logs are responsible for redacting first.
+  // Debug-only. Credential-bearing headers are redacted: this log is routinely
+  // shared when diagnosing provider problems, so the key must never appear.
   std::string header_dump;
   for (const curl_slist* n = headers; n != nullptr; n = n->next) {
     if (!header_dump.empty()) {
       header_dump.append("; ");
     }
-    header_dump.append(n->data ? n->data : "");
+    header_dump.append(
+        RedactHeaderLine(n->data != nullptr ? std::string_view(n->data) : std::string_view()));
   }
   vinput::debug::Log("LLM request provider=%s url=%s headers=[%s]\n",
                      provider.id.empty() ? "(unnamed)" : provider.id.c_str(), url.c_str(),
@@ -388,10 +427,17 @@ RewriteWithOpenAiCompatible(const std::string& text, const vinput::scene::Defini
   const std::string request_body = request.dump();
 
   guard.headers = curl_slist_append(nullptr, vinput::llm::kJsonContentTypeHeader);
-  if (!provider.api_key.empty()) {
+  const std::string api_key = vinput::llm::ResolveApiKey(provider.api_key);
+  if (!api_key.empty()) {
     const std::string auth = std::string(vinput::llm::kAuthorizationHeader) + ": " +
-                             vinput::llm::kBearerPrefix + provider.api_key;
+                             vinput::llm::kBearerPrefix + api_key;
     guard.headers = curl_slist_append(guard.headers, auth.c_str());
+  } else if (vinput::llm::IsApiKeyFromEnvironment(provider.api_key) && error_out != nullptr) {
+    // An environment reference that no longer resolves would otherwise surface
+    // as an opaque 401 from the provider.
+    *error_out = "LLM provider '" + provider.id +
+                 "' references an environment variable that is not set: " + provider.api_key;
+    return std::nullopt;
   }
 
   if (vinput::debug::Enabled()) {

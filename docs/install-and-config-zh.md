@@ -394,14 +394,38 @@ ASR 原始文本 → [场景 prompt + LLM] → 改写后的文本
 
 #### 配置一个 provider（任意 OpenAI 兼容地址）
 
+`api_key` 可以写**明文**，也可以写**环境变量引用** `$NAME` / `${NAME}`。推荐后者：密钥不进配置文件，
+也就不会被备份、同步或截图带出去。
+
 ```bash
+# 推荐：配置文件里只存引用，密钥由 daemon 的环境提供
 vinput llm add deepseek \
   -u "https://api.deepseek.com/v1" \
-  -k "$DEEPSEEK_API_KEY" \
-  -e '{"thinking":{"type":"disabled"}}'      # 可选：合并进每次请求体
+  -k '$DEEPSEEK_API_KEY' \
+  -e '{"thinking":{"type":"disabled"}}'
 
 vinput llm test deepseek     # 验证连通性，会列出可用模型
 ```
+
+环境引用在**调用时**解析，所以变量未设置时会直接报错（而不是发一个必定 401 的请求）：
+
+```
+Provider 'deepseek' 引用的环境变量未设置：$DEEPSEEK_API_KEY
+```
+
+**daemon 是 systemd 用户服务，不继承你 shell 里的 export。** 要让它拿到密钥，用
+`EnvironmentFile` 挂一个只放凭据的文件（比如存在 dotfiles-private 里，不入仓）：
+
+```bash
+mkdir -p ~/.config/systemd/user/vinput-daemon.service.d
+cat > ~/.config/systemd/user/vinput-daemon.service.d/llm-env.conf <<'EOF'
+[Service]
+EnvironmentFile=-%h/dotfiles-private/deepseek/env.sh
+EOF
+systemctl --user daemon-reload && systemctl --user restart vinput-daemon
+```
+
+（开头的 `-` 表示文件不存在时不报错。）
 
 `-e/--extra-body` 可以合并任意字段进请求体，用来适配不同后端的参数习惯。
 
@@ -449,8 +473,10 @@ LLM 请求失败/超时 → **保留 ASR 原文**，不会丢句子。
 > 实际取 `min(场景 timeout, 5000)`），无法从配置调大。API 网络拥塞时会看到
 > `failed after 5001ms: Timeout was reached`，此时回退到未经纠错的原文。
 >
-> ⚠️ 另一个安全问题：`VINPUT_DEBUG=1` 时日志会**明文打印 `Authorization: Bearer <key>`**，
-> 开调试日志时注意别把日志贴出去。
+> ✅ 本分支修掉了一个安全问题：上游在 `VINPUT_DEBUG=1` 时会**明文打印
+> `Authorization: Bearer <key>`**（原代码注释还写着 "users who share logs are
+> responsible for redacting first"）。现在 `Authorization` / `Proxy-Authorization` /
+> `api-key` / `x-api-key` / `Cookie` 这些头的值会输出为 `<redacted>`，日志可以安全粘贴。
 
 #### 关闭
 
