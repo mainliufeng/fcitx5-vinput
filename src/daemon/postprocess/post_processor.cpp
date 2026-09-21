@@ -624,6 +624,12 @@ vinput::result::Payload PostProcessor::Process(const std::string& raw_text,
   }
 
   payload.commitText = first_llm_text.empty() ? normalized : first_llm_text;
+  // One candidate means the addon commits directly; more than one makes it open
+  // the result menu. Logged so "why did a menu appear" is answerable.
+  vinput::debug::Log("postprocess scene=%s candidates=%zu committed_from=%s menu=%s\n",
+                     scene.id.c_str(), payload.candidates.size(),
+                     first_llm_text.empty() ? "raw" : "llm",
+                     payload.candidates.size() > 1 ? "yes" : "no");
   return payload;
 }
 
