@@ -48,6 +48,78 @@ X-ASR 离线模型同量级），用户基本无感。
 
 ## 2. 安装
 
+有三种方式，按你的偏好选一个：
+
+| 方式 | 适用 | 有二级精修 | 需要 sudo |
+|---|---|---|---|
+| **A** 装上发行版包 | 只想先试试语音输入 | ❌ | ✅ 一次 |
+| **B** 手动编译本分支 | 想自己控制每一步 | ✅ | ✅ 一次 |
+| **C** 交给 Agent | 不想看过程，要结果 | ✅ | ✅ 一次 |
+
+### 方式 C：交给 Agent（推荐）
+
+把下面整段发给任意能执行终端命令的 agent（Codex / Claude Code / Pi / Cursor 等）。
+它自带验收标准，能自己判断成败：
+
+```text
+请在这台 Linux 机器上安装并配置 vinput 语音输入（fcitx5 插件，含「二级精修」）。
+
+## 环境前提
+- 目标机：Arch Linux + KDE Wayland，fcitx5 已在运行
+- 代码仓库：https://github.com/mainliufeng/fcitx5-vinput  （fork，main 分支已含二级精修）
+- 安装脚本（可选，参考它做了哪些事）：
+  https://github.com/mainliufeng/dotfiles 里的 linux/desktop/input-method/setup-vinput.sh
+- 参考文档：仓库内 docs/install-and-config-zh.md
+
+## 要做什么
+1. 检查依赖，缺的用 pacman 装：
+   base-devel cmake ninja clang gettext fcitx5 pipewire qt6-base nlohmann-json libarchive openssl curl
+   并确认 archlinuxcn 仓库里的 sherpa-onnx 已安装
+2. 克隆 fork 并编译安装：
+   git clone https://github.com/mainliufeng/fcitx5-vinput.git ~/.cache/fcitx5-vinput
+   cmake --preset release-clang-mold \
+     -DCMAKE_EXE_LINKER_FLAGS=-fuse-ld=gold \
+     -DCMAKE_SHARED_LINKER_FLAGS=-fuse-ld=gold \
+     -DCMAKE_MODULE_LINKER_FLAGS=-fuse-ld=gold
+   cmake --build --preset release-clang-mold -j$(nproc)
+   sudo cmake --install ~/.cache/fcitx5-vinput/build
+   （若机器上有 mold 或 lld，可去掉上面三行 -fuse-ld 覆盖）
+3. 下载并配置两个模型：
+   vinput model add onnx-xasr-zh-en-960ms-punct-stream   # 第一遍：流式
+   vinput model add onnx-xasr-zh-en-punct-int8-off       # 第二遍：离线精修
+   vinput model use onnx-xasr-zh-en-960ms-punct-stream
+   vinput refine set onnx-xasr-zh-en-punct-int8-off
+   ⚠️ 第二遍必须是**双语离线**模型。不要用 SenseVoice（会把 repo 认成 RAIPPLE）。
+4. 配置词典：
+   生成一份「编程领域」热词表写到 ~/.config/vinput/hotwords.txt
+   （格式要求见仓库文档 §3.4），然后
+   vinput hotword set ~/.config/vinput/hotwords.txt
+5. 启动服务并**彻底重启 fcitx5**：
+   systemctl --user enable --now vinput-daemon.service
+   pkill -x fcitx5; sleep 2; setsid fcitx5 -d --replace
+   （这一步不能省，运行中的 fcitx5 不会加载新装的 addon）
+6. 自己验收，以下是硬性通过条件：
+   a) systemctl --user is-active vinput-daemon   → active
+   b) fcitx5 日志里有 "Loaded addon vinput"
+   c) 用 pw-record 录一段音频，调 `vinput recording start/stop` 或直接看 daemon 日志，
+      确认日志里同时出现 pass 1 与 pass 2 两行
+   d) 确认后端是 backend=sherpa-streaming+refine
+   e) `vinput refine get` 返回完整模型 ID（以 model. 开头）
+
+## 约束
+- 不要修改 ~/.config/fcitx5/ 下已有的输入法配置（用户在用 fcitx5-rime）
+- 不要卸载或替换系统的 fcitx5 包
+- 每一步失败要报告**原始错误**，不要静默跳过、不要假装成功
+- 需要 sudo 时明确告诉用户将弹授权框
+
+## 完成后请报告
+- 每个验收项的**实际命令输出**（不是“已完成”）
+- 两遍解码的实测文本对比
+- 遇到的坑与解决方式
+```
+
+需要手动跟着做时，用下面两种方式。
+
 ### 方式 A：只装上游版（简单，但没有二级精修）
 
 ```bash
@@ -181,24 +253,90 @@ vinput refine clear      # 退回纯流式（更快，但松手后不再重解�
 原因：SenseVoice 是中文/多语训练但**英文词汇量弱**，它会把流式已经认对的英文词"纠正"成
 形状相似的其他 token。**二级精修的前提是第二级至少不能比第一级差。**
 
-### 3.4 热词（提升英文术语 / 专有名词）
+### 3.4 词典（热词）：提升术语与专有名词
+
+热词是一个纯文本文件，一行一个词条，**两遍解码都吃这张表**（流式与离线精修都会读它，并自动切到 `modified_beam_search` 解码）。
 
 ```bash
+# 词典文件在用户配置里，不进任何代码仓库
 cat > ~/.config/vinput/hotwords.txt <<'EOF'
-skill:5.0
 repo:5.0
+commit:5.0
 API:5.0
-prompt:5.0
+prompt:4.5
+MCP:5.0
+流式:4.5
 EOF
+
 vinput hotword set ~/.config/vinput/hotwords.txt
+systemctl --user restart vinput-daemon
 ```
 
-一行一个词，可选 `:权重`（默认 4，范围 1–10）。
-**热词只对流式那一级生效**（会强制切到 `modified_beam_search` 解码），
-离线精修级不受影响。
+#### 格式规则
 
-> ⚠️ 热词是"偏置"不是"替换"：声学证据很强时压不过去（实测「子鸡→自己」加词也纠不回来）。
-> 它擅长补**术语召回**，不擅长纠正**同音错字**。
+| 规则 | 说明 |
+|---|---|
+| 一行一个词条 | 空行会被忽略 |
+| **不支持注释** | `#` 开头会被当成词条，不要写注释 |
+| 可选权重 | 写成 `词条:5.0`，**冒号两侧不能有空格** |
+| 权重范围 | 1–10，不写则用模型元数据里的 `hotwords_score`（多数模型是 1.5） |
+
+#### 权重怎么调
+
+- 从 **3.0–4.0** 起步；绝大多数技术词 4.0 够用
+- 经常被听错、且形近词多的（`MCP`、`submodule`、`fcitx5`）可以给 **5.0**
+- 过于通用的词（`tool`、`build`、`release`）给 3.0 或干脆不收——**权重过高会凭空插入不存在的词**
+- 数量控制在 **60–120 条**；表越长解码开销越大，收益递减
+
+#### 预置的编程领域词典
+
+dotfiles 里带了一份可直接用的编程词表（113 条，覆盖 agent/LLM、git 工作流、语言与工具、Web/API、Linux 桌面栈、易听错的中文技术词）：
+
+```
+~/dotfiles/linux/desktop/input-method/hotwords.txt
+```
+
+由 `setup-vinput.sh` 自动安装到 `~/.config/vinput/hotwords.txt`。改完重新 `vinput hotword set` + 重启 daemon 即可。
+
+#### 让 Agent 按领域生成词典
+
+把下面这段发给 agent，换成你自己的领域：
+
+```text
+请为 vinput 语音输入生成一份「<你的领域>」热词表，保存到 ~/.config/vinput/hotwords.txt。
+
+格式要求：
+- 纯文本，一行一个词条；不要注释、不要空行、不要多余说明
+- 需要逐词权重时写成 `词条:权重`（冒号两侧不能有空格），范围 1–10
+- 不需要权重就不要写冒号
+
+内容要求：
+- 收录该领域的高频专有名词、缩写、产品名、框架名
+- 特别收录「中文语音模型容易听错的英文技术词」（它们在中文语境里最容易被谐音带跑）
+- 同时收录该领域容易被听错的**中文**术语
+- 权重建议：常错且形近词多的给 5.0，普通术语 4.0，通用词 3.0 或直接不收
+- 总数控制在 60–120 条
+
+做完后执行：
+  vinput hotword set ~/.config/vinput/hotwords.txt
+  systemctl --user restart vinput-daemon
+
+最后用下面这条确认没有解析错误（应无输出）：
+  journalctl --user -u vinput-daemon --since '1 minute ago' | grep -iE 'hotword|invalid' 
+```
+
+#### 验证有没有生效
+
+```bash
+# 1. 确认文件被接受、daemon 重启后无解析错误
+journalctl --user -u vinput-daemon --since '1 minute ago' | grep -iE 'hotword|invalid'
+
+# 2. 看识别结果（热词表命中的专有名词会更容易被认对）
+journalctl --user -u vinput-daemon | grep -E 'pass 1|pass 2' | tail -4
+```
+
+> ⚠️ 热词是**解码期偏置**，不是替换：声学证据很强时压不过去（实测四川话里「子鸡→自己」加词也纠不回来）。
+> 它擅长补**术语召回**，不擅长纠正**同音错字**——后者需要另一套机制（拼音同音替换，尚未实现）。
 
 ### 3.5 音频与 VAD
 
