@@ -840,7 +840,7 @@ int RunAsrConfigGetRefine(Formatter& fmt, const CliContext& ctx) {
   return 0;
 }
 
-int RunAsrConfigSetRefine(const std::string& model, Formatter& fmt, const CliContext& ctx) {
+int RunAsrConfigSetRefine(const std::string& selector, Formatter& fmt, const CliContext& ctx) {
   (void)ctx;
   CoreConfig config = LoadCoreConfig();
   auto* provider = PreferredLocalProvider(&config);
@@ -848,11 +848,32 @@ int RunAsrConfigSetRefine(const std::string& model, Formatter& fmt, const CliCon
     fmt.PrintError(_("No local ASR provider configured."));
     return 1;
   }
-  provider->refineModel = model;
+
+  // Accept the short ID shown by `model list` and store the canonical
+  // `model.<source>.<name>` ID: the model manager resolves directories from the
+  // canonical form only.
+  ModelManager manager(ResolveModelBaseDir(config).string());
+  const std::string activeModel = ResolvePreferredLocalModel(config);
+  const auto models = manager.ListDetailed(activeModel);
+  const auto display_map = vinput::cli::FetchModelDisplayMap(config);
+
+  std::string error;
+  const std::string id =
+      vinput::cli::ResolveModelSelectorByShortId(selector, models, display_map, &error);
+  if (id.empty()) {
+    fmt.PrintError(error);
+    return 1;
+  }
+  if (!manager.Validate(id, &error)) {
+    fmt.PrintError(vinput::str::FmtStr(_("Model '%s' is not valid: %s"), id, error));
+    return 1;
+  }
+
+  provider->refineModel = id;
   if (!SaveAsrConfigAndReload(config, fmt)) {
     return 1;
   }
-  fmt.PrintSuccess(_("Second-pass model saved."));
+  fmt.PrintSuccess(vinput::str::FmtStr(_("Second-pass model set to '%s'."), id));
   return 0;
 }
 

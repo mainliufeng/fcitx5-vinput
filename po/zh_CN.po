@@ -765,8 +765,8 @@ msgstr "本地模型短 ID 或路径"
 msgid "No second-pass model configured."
 msgstr "未配置二级精修模型。"
 
-msgid "Second-pass model saved."
-msgstr "二级精修模型已保存。"
+msgid "Second-pass model set to '%s'."
+msgstr "二级精修模型已设为 '%s'。"
 
 msgid "Second-pass model cleared."
 msgstr "二级精修模型已清除。"
