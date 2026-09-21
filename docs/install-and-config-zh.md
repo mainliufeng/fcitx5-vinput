@@ -440,9 +440,23 @@ vinput scene add --id tech-polish \
   --label "技术纠错" \
   --prompt "$(cat polish-prompt.md)" \
   --provider deepseek --model deepseek-flash \
-  --count 1 --timeout 15000 --context-lines 0
+  --count 1 --timeout 15000 --context-lines 0 \
+  --raw-cand false
 
 vinput scene use tech-polish    # 激活；用 __raw__ 可随时关掉
+```
+
+> **`--raw-cand false` 很重要，否则每句都会让你选一次。**
+> 默认 `raw_cand=true` 会把**原始 ASR 文本也作为一个候选**，于是“原始 + LLM 改写”两个候选
+> 触发候选菜单（addon 的条件是 `payload.candidates.size() > 1`）。
+> 关掉之后候选只剩 LLM 结果一个 → **直接上屏，不弹菜单**。
+>
+> 代价：如果 LLM 改错了，你没有“选回原文”的入口（只能撤销或重说）。想要那个兜底就把它设回 `true`。
+>
+> 不确认到底弹不弹？开 `VINPUT_DEBUG=1` 看这一行：
+> ```
+> postprocess scene=tech-polish candidates=1 committed_from=llm menu=no
+> ```
 ```
 
 dotfiles 里带一份现成的 `polish-prompt.md`，它的约束是关键：
