@@ -20,11 +20,18 @@ namespace vinput::daemon::asr {
 
 namespace {
 
+// The model metadata is authoritative. A model author who pins `num_threads` has
+// measured it for that model, and for the small streaming transducer used here the
+// value matters a lot: onnxruntime's thread synchronisation costs more than the
+// parallelism saves, so the registry's `num_threads: 1` runs both faster in wall
+// time and roughly an order of magnitude cheaper in CPU than the previous runtime
+// default of 4.
 int ChooseNumThreads(const nlohmann::json& model_cfg, int runtime_default) {
-  if (runtime_default > 0) {
-    return runtime_default;
+  const int declared = JsonInt(model_cfg, "num_threads", 0);
+  if (declared > 0) {
+    return declared;
   }
-  return JsonInt(model_cfg, "num_threads", 1);
+  return runtime_default > 0 ? runtime_default : 1;
 }
 
 void WriteLe16(FILE* file, uint16_t value) {
