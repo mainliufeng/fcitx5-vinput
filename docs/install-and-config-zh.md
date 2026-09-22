@@ -499,6 +499,29 @@ vinput scene use __raw__     # 回到纯 ASR，零额外延迟
 
 ---
 
+### 3.8 已知限制：超过约 35 秒的语音不做二级精修
+
+离线精修用的 X-ASR 模型**处理不了约 40 秒以上的音频**——encoder 自注意力的 reshape 会失败：
+
+```
+[E:onnxruntime] Non-zero status code returned while running Reshape node.
+  Name:'/encoder/0/layers.0/self_attn_weights/Reshape_3'
+  Input shape:{1,1047,16}, requested shape:{-1,6093,4,4}
+```
+
+实测边界：**38.8 s 通过，44.4 s 抛异常**（同一段音频拼接而成）。
+
+所以代码里加了两道防线：
+
+1. **长度闸**：utterance 超过 35 s（`kMaxSecondPassSamples`）直接跳过第二遍，只记一条日志，不再把 ONNX 的错误刷满 journal。
+2. **异常兜底**：整个第二遍包在 `try/catch` 里。任何抛出（不只是返回 false）都会**静默保留流式结果**——这是"二级精修绝不丢句子"这条保证的真正落点。
+
+行为：**长语音仍然正常上屏**，只是最终文本是流式的结果（未经离线重解码修正），后面照常走 LLM 纠错。
+
+> 已知未做：把长音频切成 <35 s 的片段分别精修再拼接，可以保住长语音的精修收益。但切点可能切断词，收益与风险都明显，暂未实现。
+
+---
+
 ## 4. 使用
 
 vinput 是 fcitx5 的 **Module**，不是可选输入法——**不需要切换到它**。

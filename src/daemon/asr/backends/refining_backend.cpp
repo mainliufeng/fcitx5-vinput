@@ -1,6 +1,7 @@
 #include "daemon/asr/backends/refining_backend.h"
 
 #include <cstdint>
+#include <exception>
 #include <string>
 #include <utility>
 #include <vector>
@@ -124,6 +125,31 @@ private:
   // accuracy optimisation, never a correctness dependency: any failure keeps
   // the primary result and stays out of the user's way.
   void RunSecondPass() {
+    // Measured limit: this offline X-ASR encoder fails on inputs past roughly
+    // 40 s of audio (ONNX reshape error in the encoder's self-attention:
+    // "Input shape:{1,1047,16}, requested shape:{-1,6093,4,4}"). 38.8 s passes,
+    // 44.4 s throws. Skipping the pass below that cliff avoids both the wasted
+    // decode and a wall of ONNX error output; the streaming text is kept.
+    constexpr std::size_t kMaxSecondPassSamples = 16000 * 35;
+    if (utterance_.size() > kMaxSecondPassSamples) {
+      debug::Log("vinput: second pass skipped, utterance is %zu samples (limit %zu): "
+                 "this offline model cannot decode it, keeping the streaming result\n",
+                 utterance_.size(), kMaxSecondPassSamples);
+      return;
+    }
+
+    // The safety net for everything the length guard cannot predict: a decode
+    // failure must never cost the user the whole utterance.
+    try {
+      RunSecondPassLocked();
+    } catch (const std::exception& error) {
+      debug::Log("vinput: second pass threw, keeping the streaming result: %s\n", error.what());
+    } catch (...) {
+      debug::Log("vinput: second pass threw an unknown exception, keeping the streaming result\n");
+    }
+  }
+
+  void RunSecondPassLocked() {
     std::string refine_error;
     if (!refine_->PushAudio(utterance_, &refine_error) || !refine_->Finish(&refine_error)) {
       debug::Log("vinput: second pass skipped: %s\n", refine_error.c_str());
