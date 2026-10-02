@@ -1,0 +1,15 @@
+{
+  "installed_at": "2026-10-02T16:09:50.705223+00:00",
+  "source_commit": "84721a0b957065be14a02fe92a766dec261baaa4",
+  "executable": "/home/liufeng/.local/libexec/vinput/vinput-daemon",
+  "sha256": "0ca7d691515da650afe43f4beecd7f8a358bab3153e855e0ce077427df7a9d54",
+  "service": "vinput-daemon.service",
+  "pid": 1277164,
+  "state": "active",
+  "replay_binary_sha256": "90f295a2ef456745916ee515bb951207fa0749d2a98279777f01ecc9b3aff540",
+  "full_repeat_cases": 127,
+  "changed_transcripts_from_final": 0,
+  "capture_scope": "Isolated real PipeWire and D-Bus, no physical microphone or editor insertion",
+  "build_ci": "https://github.com/mainliufeng/fcitx5-vinput/actions/runs/37031970181",
+  "cpp_linter": "https://github.com/mainliufeng/fcitx5-vinput/actions/runs/37031976910"
+}
