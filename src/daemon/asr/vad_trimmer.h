@@ -29,10 +29,13 @@ public:
   std::vector<float> Trim(const std::vector<float>& samples, int sample_rate);
 
   bool Available() const;
+  // Result of the last Trim call. Unavailable VAD does not reject speech.
+  bool DetectedSpeech() const;
   void Shutdown();
 
 private:
   const SherpaOnnxVoiceActivityDetector* vad_ = nullptr;
   int sample_rate_ = 16000;
   VadTrimParams params_{};
+  bool detected_speech_ = false;
 };

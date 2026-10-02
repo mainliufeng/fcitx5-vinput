@@ -57,6 +57,16 @@ def write_wav(path, samples):
         audio.writeframes(pcm.tobytes())
 
 
+def mix_background(pcm, noise, snr):
+    noise = [noise[i % len(noise)] for i in range(len(pcm))]
+    rms = math.sqrt(sum(x*x for x in pcm) / len(pcm))
+    noise_rms = math.sqrt(sum(x*x for x in noise) / len(noise))
+    scale = rms / (10 ** (snr / 20)) / max(noise_rms, 1e-9)
+    mixed = [x + n * scale for x, n in zip(pcm, noise)]
+    attenuation = min(1, 30000 / max(1, max(abs(x) for x in mixed)))
+    return [x * attenuation for x in mixed]
+
+
 def mix_noise(pcm, snr, seed):
     # Controlled stationary white-noise stress, NOT a real café recording.
     rng = random.Random(seed)
@@ -75,7 +85,7 @@ def prepare(root):
     rows = []
     seen = set()
     for language, count in [('cmn_hans_cn', 10), ('en_us', 5)]:
-        for split, fold in [('validation', 'dev'), ('test', 'holdout')]:
+        for split, fold in [('validation', 'dev'), ('validation', 'holdout')]:
             index = root / f'{language}-{split}.json'
             if not index.exists():
                 url = ('https://datasets-server.huggingface.co/rows?dataset=google%2Ffleurs'
@@ -168,6 +178,38 @@ def prepare(root):
     print(f'{len(rows)} cases; corpus: {root}', flush=True)
 
 
+def environment(root):
+    root = Path(root).resolve()
+    rows = [r for r in read_jsonl(root/'manifest.jsonl') if 'train' not in r['category']]
+    raw, target = root/'train-original.wav', root/'train-16k.wav'
+    noise_url = 'https://download.pytorch.org/torchaudio/tutorial-assets/steam-train-whistle-daniel_simon.wav'
+    if not raw.exists():
+        download(noise_url, raw)
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(raw), '-ar', '16000', '-ac', '1',
+                    '-c:a', 'pcm_s16le', str(target)], check=True)
+    noise = read_wav(target)
+    for case in list(rows):
+        if not case['category'].endswith('/clean'):
+            continue
+        pcm = read_wav(case['audio'])
+        path = root/f'{case["id"]}-train-10db.wav'
+        write_wav(path, mix_background(pcm, noise, 10))
+        rows.append(dict(case, id=case['id']+'-train-10db', audio=str(path),
+                         category=case['category'].replace('/clean', '/train-10db'),
+                         audio_kind='human_speech_mixed_with_recorded_train', snr_db=10,
+                         noise_source=noise_url, noise_author='Daniel Simon', noise_license='CC-BY-3.0',
+                         noise_original_sha256=hashlib.sha256(raw.read_bytes()).hexdigest(),
+                         sha256=hashlib.sha256(path.read_bytes()).hexdigest()))
+    rows.append(dict(id='train-no-speech', audio=str(target), reference='', fold='dev',
+                     category='no-speech/train', audio_kind='recorded_environment_no_target_speech',
+                     source=noise_url, license='CC-BY-3.0', author='Daniel Simon',
+                     sha256=hashlib.sha256(target.read_bytes()).hexdigest()))
+    write_jsonl(root/'manifest.jsonl', rows)
+    for fold in ('dev', 'holdout'):
+        write_jsonl(root/f'{fold}.jsonl', [r for r in rows if r['fold'] == fold])
+    print(f'{len(rows)} cases including recorded train noise')
+
+
 def normalize(text, punctuation=False):
     text = unicodedata.normalize('NFKC', text).casefold()
     return ''.join(c for c in text if not c.isspace() and
@@ -238,6 +280,8 @@ def main():
     sub = parser.add_subparsers(dest='command', required=True)
     prep = sub.add_parser('prepare')
     prep.add_argument('directory')
+    environmental = sub.add_parser('environment')
+    environmental.add_argument('directory')
     scoring = sub.add_parser('score')
     scoring.add_argument('manifest')
     scoring.add_argument('results')
@@ -245,6 +289,8 @@ def main():
     args = parser.parse_args()
     if args.command == 'prepare':
         prepare(args.directory)
+    elif args.command == 'environment':
+        environment(args.directory)
     else:
         report = score(args.manifest, args.results)
         Path(args.output).write_text(json.dumps(report, ensure_ascii=False, indent=2)+'\n')

@@ -22,6 +22,18 @@ add_test(NAME test_quality_metrics
     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/quality/test_quality.py)
 
 if(VINPUT_ENABLE_LOCAL_ASR)
+    add_executable(test_vad_padding
+        quality/test_vad_padding.cpp
+        ${CMAKE_SOURCE_DIR}/src/daemon/asr/vad_trimmer.cpp)
+    target_include_directories(test_vad_padding PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    add_test(NAME test_vad_padding COMMAND test_vad_padding)
+
+    add_executable(test_refining_quality
+        quality/test_refining_quality.cpp
+        ${CMAKE_SOURCE_DIR}/src/daemon/asr/backends/refining_backend.cpp)
+    target_include_directories(test_refining_quality PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    add_test(NAME test_refining_quality COMMAND test_refining_quality)
+
     add_executable(asr_replay
         quality/asr_replay.cpp
         ${CMAKE_SOURCE_DIR}/src/daemon/asr/backends/refining_backend.cpp

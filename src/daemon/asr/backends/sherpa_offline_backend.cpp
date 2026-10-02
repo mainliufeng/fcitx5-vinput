@@ -481,8 +481,8 @@ public:
 
     if (vad_available_ && vad_) {
       samples = vad_->Trim(samples, 16000);
-      if (samples.size() < kMinSamplesForInference) {
-        fprintf(stderr, "vinput: audio too short after VAD trim, skipping\n");
+      if (!vad_->DetectedSpeech() || samples.size() < kMinSamplesForInference) {
+        fprintf(stderr, "vinput: no speech or audio too short after VAD trim, skipping\n");
         events_.push_back({RecognitionEventKind::Completed, {}, {}});
         if (error)
           error->clear();
