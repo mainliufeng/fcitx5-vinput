@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <sherpa-onnx/c-api/c-api.h>
+#include <utility>
 
 VadTrimmer::VadTrimmer() = default;
 
@@ -46,6 +47,8 @@ bool VadTrimmer::Init(const std::string& model_path, int sample_rate, const std:
 }
 
 std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sample_rate*/) {
+  detected_speech_ = false;
+  speech_ranges_.clear();
   if (!vad_ || samples.empty())
     return samples;
 
@@ -79,11 +82,22 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sam
       int start = std::max(0, static_cast<int>(seg->start) - padding_samples);
       int end =
           std::min(n, static_cast<int>(seg->start) + static_cast<int>(seg->n) + padding_samples);
+      // Adjacent speech segments may have overlapping protective padding.
+      // Consume each original sample once; duplicating a boundary can make
+      // the recognizer repeat syllables or insert words around a short pause.
+      start = std::max(start, last_end);
       if (first_start < 0) {
         first_start = start;
       }
-      last_end = end;
-      result.insert(result.end(), samples.begin() + start, samples.begin() + end);
+      if (end > start) {
+        if (!speech_ranges_.empty() && start <= speech_ranges_.back().second) {
+          speech_ranges_.back().second = end;
+        } else {
+          speech_ranges_.emplace_back(start, end);
+        }
+        last_end = end;
+        result.insert(result.end(), samples.begin() + start, samples.begin() + end);
+      }
     }
     if (seg) {
       SherpaOnnxDestroySpeechSegment(seg);
@@ -91,6 +105,7 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sam
     SherpaOnnxVoiceActivityDetectorPop(vad_);
   }
 
+  detected_speech_ = !result.empty();
   if (result.empty()) {
     fprintf(stderr, "vinput: VAD found no speech, returning original audio\n");
     return samples;
@@ -108,6 +123,14 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sam
 
 bool VadTrimmer::Available() const {
   return vad_ != nullptr;
+}
+
+bool VadTrimmer::DetectedSpeech() const {
+  return detected_speech_;
+}
+
+const std::vector<std::pair<int, int>>& VadTrimmer::SpeechRanges() const {
+  return speech_ranges_;
 }
 
 void VadTrimmer::Shutdown() {

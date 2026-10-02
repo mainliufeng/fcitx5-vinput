@@ -9,6 +9,8 @@
 
 #include "common/utils/debug_log.h"
 
+#include "daemon/asr/text_join.h"
+
 namespace vinput::daemon::asr {
 
 namespace {
@@ -155,7 +157,7 @@ private:
           debug::Log("vinput: second pass chunk produced no text, keeping the streaming result\n");
           return;
         }
-        joined += text;
+        AppendRecognizedText(joined, text);
         ++refined_chunks;
       }
 

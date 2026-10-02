@@ -1,8 +1,11 @@
 #include "daemon/asr/backends/sherpa_streaming_backend.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <iterator>
+#include <memory>
 #include <mutex>
 #include <sherpa-onnx/c-api/c-api.h>
 #include <utility>
@@ -14,7 +17,9 @@
 
 #include "daemon/asr/asr_config.h"
 #include "daemon/asr/hotword_utils.h"
+#include "daemon/asr/runtime/recognition_contract.h"
 #include "daemon/asr/sherpa_json_helpers.h"
+#include "daemon/asr/vad_trimmer.h"
 
 namespace vinput::daemon::asr {
 
@@ -81,8 +86,8 @@ bool DumpDebugWav(const char* path, std::span<const int16_t> pcm, int sample_rat
 class SherpaStreamingSession : public RecognitionSession {
 public:
   SherpaStreamingSession(const SherpaOnnxOnlineRecognizer* recognizer,
-                         const SherpaOnnxOnlineStream* stream)
-      : recognizer_(recognizer), stream_(stream) {}
+                         const SherpaOnnxOnlineStream* stream, std::unique_ptr<VadTrimmer> vad)
+      : recognizer_(recognizer), stream_(stream), vad_(std::move(vad)) {}
 
   ~SherpaStreamingSession() override { Reset(); }
 
@@ -141,6 +146,30 @@ public:
     }
 
     finished_ = true;
+    if (vad_) {
+      std::vector<float> samples;
+      samples.reserve(debug_pcm_.size());
+      std::ranges::transform(debug_pcm_, std::back_inserter(samples),
+                             [](int16_t sample) { return static_cast<float>(sample) / 32768.0F; });
+      vad_->Trim(samples, 16000);
+      if (!vad_->DetectedSpeech()) {
+        events_.clear();
+        // Empty FinalText clears any displayed partial hypothesis.
+        events_.push_back({.kind = RecognitionEventKind::FinalText, .text = {}, .error = {}});
+        events_.push_back({.kind = RecognitionEventKind::Completed, .text = {}, .error = {}});
+        if (error != nullptr) {
+          error->clear();
+        }
+        return true;
+      }
+    }
+    // Flush the model's right context before sealing the stream, following
+    // sherpa-onnx's decode-file C API example. Without tail padding a quick
+    // push-to-talk release can leave the last syllables undecoded. 1.28 s
+    // also flushes the 960 ms X-ASR chunk, for which 0.3 s is insufficient.
+    const std::vector<float> tail_padding(20480, 0.0F);
+    SherpaOnnxOnlineStreamAcceptWaveform(stream_, 16000, tail_padding.data(),
+                                         static_cast<int32_t>(tail_padding.size()));
     SherpaOnnxOnlineStreamInputFinished(stream_);
     DecodeAvailable();
 
@@ -256,6 +285,7 @@ private:
   std::vector<int16_t> debug_pcm_;
   std::string last_partial_text_;
   std::vector<RecognitionEvent> events_;
+  std::unique_ptr<VadTrimmer> vad_;
 };
 
 class SherpaStreamingBackend : public AsrBackend {
@@ -300,7 +330,22 @@ public:
     if (error) {
       error->clear();
     }
-    return std::make_unique<SherpaStreamingSession>(recognizer_, stream);
+    std::unique_ptr<VadTrimmer> vad;
+    if (asr_config_.vad_enabled && !asr_config_.vad_model_path.empty()) {
+      vad = std::make_unique<VadTrimmer>();
+      VadTrimParams params;
+      params.threshold = asr_config_.vad_threshold;
+      params.min_speech_duration = asr_config_.vad_min_speech_duration;
+      params.min_silence_duration = asr_config_.vad_min_silence_duration;
+      params.speech_pad_ms = asr_config_.vad_speech_pad_ms;
+      std::string vad_error;
+      if (!vad->Init(asr_config_.vad_model_path, 16000, "cpu", params, &vad_error)) {
+        fprintf(stderr, "vinput: %s, continuing without streaming no-speech gate\n",
+                vad_error.c_str());
+        vad.reset();
+      }
+    }
+    return std::make_unique<SherpaStreamingSession>(recognizer_, stream, std::move(vad));
   }
 
 private:
@@ -543,8 +588,12 @@ std::unique_ptr<AsrBackend> CreateSherpaStreamingBackend(const CoreConfig& confi
   const ModelInfo model_info = model_mgr.GetModelInfo();
   asr_config.language = model_info.RuntimeLanguageHint();
   asr_config.hotwords_file = provider.hotwordsFile;
-  asr_config.vad_enabled = false;
-  asr_config.vad_model_path.clear();
+  asr_config.vad_enabled = config.asr.vad.enabled;
+  asr_config.vad_model_path = VINPUT_VAD_MODEL_PATH;
+  asr_config.vad_threshold = static_cast<float>(config.asr.vad.threshold);
+  asr_config.vad_min_speech_duration = static_cast<float>(config.asr.vad.minSpeechDuration);
+  asr_config.vad_min_silence_duration = static_cast<float>(config.asr.vad.minSilenceDuration);
+  asr_config.vad_speech_pad_ms = config.asr.vad.speechPadMs;
 
   if (error) {
     error->clear();

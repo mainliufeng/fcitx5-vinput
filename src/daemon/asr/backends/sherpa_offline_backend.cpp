@@ -1,6 +1,7 @@
 #include "daemon/asr/backends/sherpa_offline_backend.h"
 
 #include <cerrno>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -16,6 +17,7 @@
 
 #include "daemon/asr/hotword_utils.h"
 #include "daemon/asr/sherpa_json_helpers.h"
+#include "daemon/asr/text_join.h"
 #include "daemon/asr/vad_trimmer.h"
 
 namespace vinput::daemon::asr {
@@ -479,18 +481,44 @@ public:
     for (size_t i = 0; i < pcm_.size(); ++i)
       samples[i] = static_cast<float>(pcm_[i]) / 32768.0f;
 
+    std::vector<std::vector<float>> decode_chunks;
     if (vad_available_ && vad_) {
-      samples = vad_->Trim(samples, 16000);
-      if (samples.size() < kMinSamplesForInference) {
-        fprintf(stderr, "vinput: audio too short after VAD trim, skipping\n");
+      auto trimmed = vad_->Trim(samples, 16000);
+      if (!vad_->DetectedSpeech() || trimmed.size() < kMinSamplesForInference) {
+        fprintf(stderr, "vinput: no speech or audio too short after VAD trim, skipping\n");
         events_.push_back({RecognitionEventKind::Completed, {}, {}});
         if (error)
           error->clear();
         return true;
       }
+      // A long chunk can contain several complete utterances. Preserve VAD's
+      // speech boundaries instead of packing them into one long attention
+      // context, which can cause the offline model to omit whole sentences.
+      if (samples.size() > std::size_t{16000} * 20 && vad_->SpeechRanges().size() > 1) {
+        for (const auto& [start, end] : vad_->SpeechRanges()) {
+          decode_chunks.emplace_back(samples.begin() + start, samples.begin() + end);
+        }
+      } else {
+        decode_chunks.push_back(std::move(trimmed));
+      }
+    } else {
+      decode_chunks.push_back(std::move(samples));
     }
 
-    std::string text = InferOffline(recognizer_, samples);
+    std::string text;
+    for (const auto& chunk : decode_chunks) {
+      const auto decoded = InferOffline(recognizer_, chunk);
+      if (decoded.empty()) {
+        // Let the two-pass caller keep its complete streaming fallback rather
+        // than committing a partial transcript with one speech segment missing.
+        events_.push_back({.kind = RecognitionEventKind::Completed, .text = {}, .error = {}});
+        if (error != nullptr) {
+          error->clear();
+        }
+        return true;
+      }
+      AppendRecognizedText(text, decoded);
+    }
     if (!text.empty())
       events_.push_back({RecognitionEventKind::FinalText, std::move(text), {}});
     events_.push_back({RecognitionEventKind::Completed, {}, {}});

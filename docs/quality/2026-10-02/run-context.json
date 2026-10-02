@@ -1,0 +1,58 @@
+{
+  "captured_at": "2026-10-02T15:33:10.453592+00:00",
+  "platform": "Linux-7.2.7-zen1-1-zen-x86_64-with-glibc2.44",
+  "cpu": "Intel Core i9-12900H",
+  "source_baseline_commit": "cad5d8d4353ec8ff511074112410d9bf8e9814fe",
+  "source_after_commit": "5ca81b1e74f3a69afc4ed8d2284bbde2cb3d311c",
+  "baseline_binary_sha256": "bfc96f3251ffd136782372ee2ac50f204f4c6bedc51541fd7786bbdfdf180108",
+  "after_binary_sha256": "8c6793d14680f44ab29c657384c889145b93bf36bdc379bebe37a7f9cd4647d6",
+  "models": {
+    "x-asr-960ms-streaming-zipformer-transducer-zh-en-punct-int8": {
+      "decoder.onnx": "a1cbc9eac2d5e3fb6617a218c67ad6daaa7f4e0fd225f08b2c22ab0413c8c257",
+      "encoder.int8.onnx": "017e3cf23097302dbc57ebd72cf4a209cf55c367920669e2d9ce9c0381a96ddd",
+      "tokens.txt": "b818a60878b9aae978cbb8ad594acbd403d76d1af2e31ef4197c84e2dbdba27c",
+      "joiner.int8.onnx": "aedb7fa697b2ab43f20499826fff7c997eea7d67db77be97769aeeeb726e63b3",
+      "vinput-model.json": "021481287317d551ae8570a01277a3e98f7baf08e7e7da5a42773f777f4f0958",
+      "bpe.vocab": "4bd5e99eff7234648615bf1403906745a5d5699e486bd07c495c149e77c1cac0"
+    },
+    "x-asr-zipformer-transducer-zh-en-punct-int8": {
+      "encoder-epoch-99-avg-1.int8.onnx": "7f6aa62056efd8af9da13e0faa81cd3f284d2fb2e3b63de56fd2dfd3450910dc",
+      "joiner-epoch-99-avg-1.int8.onnx": "aedb7fa697b2ab43f20499826fff7c997eea7d67db77be97769aeeeb726e63b3",
+      "tokens.txt": "b818a60878b9aae978cbb8ad594acbd403d76d1af2e31ef4197c84e2dbdba27c",
+      "decoder-epoch-99-avg-1.onnx": "72f47405d3c1033bebccbef82f90071e7b4ba3e71b9c986f2b74244b25723aed",
+      "vinput-model.json": "489b96e97edc7b3f7b413ed59745daa6e438587b88568e0f5b85979e43223f2f",
+      "bpe.vocab": "4bd5e99eff7234648615bf1403906745a5d5699e486bd07c495c149e77c1cac0"
+    }
+  },
+  "hotwords_sha256": "c9b2614d7d0d8d2daf5d6f8203643f838eafe38c3e00bd8a43249da6157bb9ff",
+  "asr": {
+    "vad": {
+      "enabled": true,
+      "threshold": 0.45,
+      "min_speech_duration": 0.15,
+      "min_silence_duration": 0.5,
+      "speech_pad_ms": 300
+    },
+    "input_gain": 1.0,
+    "normalize_audio": true
+  },
+  "replay": {
+    "chunk_ms": 20,
+    "real_time": false,
+    "llm_postprocess": false,
+    "scope": "Production ASR backends. Capture and Fcitx insertion latency are not included. Input gain is 1.0; streaming capture does not peak normalize."
+  },
+  "competitors": {
+    "wechat": {
+      "status": "not_measured",
+      "reason": "No accessible installed client"
+    },
+    "doubao": {
+      "status": "not_measured",
+      "reason": "No accessible installed client"
+    }
+  },
+  "cases": 127,
+  "duration_seconds": 1549.9600000000005,
+  "holdout_limit": "Long English failure was inspected before the VAD segmentation fix. That single long case is a regression case, not a blinded independent win."
+}

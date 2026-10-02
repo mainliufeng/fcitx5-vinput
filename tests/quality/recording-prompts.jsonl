@@ -1,0 +1,40 @@
+{"id": "owner-01", "category": "daily", "spoken": "明天上午我们先开会，再把会议纪要发给大家。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-02", "category": "daily", "spoken": "我已经到楼下了，你准备好以后给我打个电话。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-03", "category": "daily", "spoken": "今天有点冷，出门记得带一件外套。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-04", "category": "daily", "spoken": "这个问题先记下来，等上线以后再一起处理。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-05", "category": "daily", "spoken": "请把第二段移到最前面，最后一段保留原样。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-06", "category": "daily", "spoken": "这次只更新文档，不要修改代码，也不要发布。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-07", "category": "numbers", "spoken": "明天下午三点半开会，预计四十五分钟。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-08", "category": "numbers", "spoken": "预算是一千二百五十元，不能超过两千元。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-09", "category": "numbers", "spoken": "错误率从百分之八降到了百分之五。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-10", "category": "numbers", "spoken": "版本是二点三点一，不是二点三点零。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-11", "category": "numbers", "spoken": "端口是八零八零，超时时间是三十秒。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-12", "category": "numbers", "spoken": "请保留负数、小数点和百分号，不要四舍五入。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-13", "category": "mixed", "spoken": "先检查 GitHub 上的 issue，再创建一个 pull request。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-14", "category": "mixed", "spoken": "这个 repo 使用 Go 和 TypeScript，前端是 React。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-15", "category": "mixed", "spoken": "把 API key 放进环境变量，不要提交到 Git。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-16", "category": "mixed", "spoken": "先运行 go test，再运行 npm run build。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-17", "category": "mixed", "spoken": "Docker 容器连不上 PostgreSQL，先检查 connection string。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-18", "category": "mixed", "spoken": "请检查 Redis 的 TTL 和 cache hit rate。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-19", "category": "mixed", "spoken": "在 Linux 上用 Fcitx5 和 PipeWire 实现语音输入。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-20", "category": "mixed", "spoken": "这个 WebSocket connection 需要 reconnect 和 exponential backoff。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-21", "category": "mixed", "spoken": "把 JSON schema 里的 user ID 改成可选字段。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-22", "category": "mixed", "spoken": "先做 code review，再 merge 到 main，最后 push。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-23", "category": "negation", "spoken": "不要删除数据库，也不要清空缓存。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-24", "category": "negation", "spoken": "这个接口不能重试，另一个接口可以重试。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-25", "category": "correction", "spoken": "周二，不对，周三下午再发。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-26", "category": "correction", "spoken": "预算三千，改成两千五百，最终按两千五百算。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-27", "category": "disfluency", "spoken": "嗯，那个，我想先把这个问题确认一下，再开始做。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-28", "category": "disfluency", "spoken": "我们先，先测试登录，再测试支付，最后检查回调。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-29", "category": "disfluency", "spoken": "这个，这个错误不是每次出现，有时候要重启才会出现。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-30", "category": "punctuation", "spoken": "你今天有空吗？如果有空，我们下午一起讨论。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-31", "category": "punctuation", "spoken": "有三件事：测试登录，检查支付，更新文档。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-32", "category": "punctuation", "spoken": "他说可以继续，我说先等一下，因为测试还没有通过。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-33", "category": "names", "spoken": "请确认刘峰、李明和王小雨三个人的名字。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-34", "category": "names", "spoken": "明天从南京南站出发，到上海虹桥站下车。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-35", "category": "names", "spoken": "这条记录属于 Mobius，另一个项目叫 Cornice。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-36", "category": "soft", "spoken": "请小声说话，会议室里还有人在开会。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-37", "category": "fast", "spoken": "先登录然后创建项目再上传文件等处理完成以后下载结果。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-38", "category": "long", "spoken": "这次发布前要完成三项检查。第一，登录以后可以创建项目，退出以后不能访问私人文件。第二，支付成功以后只能增加一次额度，重复回调不能重复记账。第三，上传失败要保留原来的文件，并告诉用户可以重试。所有检查完成以后再发布，发现任何问题都先停下来处理。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-39", "category": "long", "spoken": "我们今天讨论的是 Linux 语音输入。用户按下快捷键以后，应该能看到边说边出的文字。松手以后要尽快定稿，不能丢掉最后几个字。遇到键盘声、风扇声或者其他背景噪音时，也不能凭空输入内容。中文、English 和 programming terms 混在一起时，要保留正确的词边界和标点。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
+{"id": "owner-40", "category": "long", "spoken": "优化不能只看干净录音上的错字率，还要检查噪音、轻声、长句和中英混说。测试时应该使用同一批音频，记录模型和配置，分开开发集与保留集。微信输入法和豆包输入法没有实际跑过，就不要填写它们的成绩。只有完成真实测试以后，才可以判断还有多少差距。", "audio_status": "requires_human_recording", "instruction": "朗读保留口头纠正和停顿；人工校对实际录音后再填写 reference；不要以识别结果充当地面真值。"}
