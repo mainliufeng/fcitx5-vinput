@@ -9,6 +9,8 @@
 
 #include "common/utils/debug_log.h"
 
+#include "daemon/asr/text_join.h"
+
 namespace vinput::daemon::asr {
 
 namespace {
@@ -155,13 +157,7 @@ private:
           debug::Log("vinput: second pass chunk produced no text, keeping the streaming result\n");
           return;
         }
-        const auto is_ascii_word = [](unsigned char ch) {
-          return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
-        };
-        if (!joined.empty() && is_ascii_word(joined.back()) && is_ascii_word(text.front())) {
-          joined += ' ';
-        }
-        joined += text;
+        AppendRecognizedText(joined, text);
         ++refined_chunks;
       }
 

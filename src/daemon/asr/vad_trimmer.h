@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <utility>
 #include <vector>
 
 struct SherpaOnnxVoiceActivityDetector;
@@ -31,6 +32,7 @@ public:
   bool Available() const;
   // Result of the last Trim call. Unavailable VAD does not reject speech.
   bool DetectedSpeech() const;
+  const std::vector<std::pair<int, int>>& SpeechRanges() const;
   void Shutdown();
 
 private:
@@ -38,4 +40,5 @@ private:
   int sample_rate_ = 16000;
   VadTrimParams params_{};
   bool detected_speech_ = false;
+  std::vector<std::pair<int, int>> speech_ranges_;
 };

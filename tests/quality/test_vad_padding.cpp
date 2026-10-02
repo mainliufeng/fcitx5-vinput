@@ -59,6 +59,10 @@ int main() {
     std::cerr << "Protected speech intervals duplicated or reordered samples\n";
     return 1;
   }
+  const std::vector<std::pair<int, int>> expected_ranges = {{0, 24000}, {55200, 68000}};
+  if (trimmer.SpeechRanges() != expected_ranges) {
+    return 1;
+  }
   // A fully contained interval must not rewind the consumed position.
   segments = {{8000, 16000}, {12000, 1000}, {25000, 2000}};
   actual = trimmer.Trim(input, 16000);
@@ -67,7 +71,8 @@ int main() {
     return 1;
   }
   segments.clear();
-  if (trimmer.Trim(input, 16000) != input || trimmer.DetectedSpeech()) {
+  if (trimmer.Trim(input, 16000) != input || trimmer.DetectedSpeech() ||
+      !trimmer.SpeechRanges().empty()) {
     return 1;
   }
   return 0;

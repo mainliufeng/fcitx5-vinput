@@ -25,7 +25,8 @@ if(VINPUT_ENABLE_LOCAL_ASR)
     add_executable(test_vad_padding
         quality/test_vad_padding.cpp
         ${CMAKE_SOURCE_DIR}/src/daemon/asr/vad_trimmer.cpp)
-    target_include_directories(test_vad_padding PRIVATE ${CMAKE_SOURCE_DIR}/src)
+    target_include_directories(test_vad_padding PRIVATE
+        ${CMAKE_SOURCE_DIR}/src ${SHERPA_ONNX_INCLUDE_DIR})
     add_test(NAME test_vad_padding COMMAND test_vad_padding)
 
     add_executable(test_refining_quality
@@ -44,5 +45,6 @@ if(VINPUT_ENABLE_LOCAL_ASR)
     )
     target_compile_definitions(asr_replay PRIVATE
         VINPUT_VAD_MODEL_PATH="${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_DATADIR}/fcitx5-vinput/vad/silero_vad.onnx")
-    target_link_libraries(asr_replay PRIVATE common sherpa-onnx-c-api pthread)
+    target_include_directories(asr_replay PRIVATE ${SHERPA_ONNX_INCLUDE_DIR})
+    target_link_libraries(asr_replay PRIVATE common ${SHERPA_ONNX_C_LIB} pthread)
 endif()

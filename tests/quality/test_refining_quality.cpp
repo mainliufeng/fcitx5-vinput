@@ -78,7 +78,7 @@ bool Check(std::vector<std::string> refined, const std::string& expected) {
 
 int main() {
   if (!Check({"hello", "world"}, "hello world") || !Check({"你好", "世界"}, "你好世界") ||
-      !Check({"hello ", "world"}, "hello world") ||
+      !Check({"hello ", "world"}, "hello world") || !Check({"hello.", "World"}, "hello. World") ||
       !Check({"first chunk", ""}, "complete streaming fallback")) {
     std::cerr << "Long-dictation word boundary or fallback regression\n";
     return 1;

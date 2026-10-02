@@ -47,6 +47,7 @@ bool VadTrimmer::Init(const std::string& model_path, int sample_rate, const std:
 
 std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sample_rate*/) {
   detected_speech_ = false;
+  speech_ranges_.clear();
   if (!vad_ || samples.empty())
     return samples;
 
@@ -88,6 +89,11 @@ std::vector<float> VadTrimmer::Trim(const std::vector<float>& samples, int /*sam
         first_start = start;
       }
       if (end > start) {
+        if (!speech_ranges_.empty() && start <= speech_ranges_.back().second) {
+          speech_ranges_.back().second = end;
+        } else {
+          speech_ranges_.emplace_back(start, end);
+        }
         last_end = end;
         result.insert(result.end(), samples.begin() + start, samples.begin() + end);
       }
@@ -120,6 +126,10 @@ bool VadTrimmer::Available() const {
 
 bool VadTrimmer::DetectedSpeech() const {
   return detected_speech_;
+}
+
+const std::vector<std::pair<int, int>>& VadTrimmer::SpeechRanges() const {
+  return speech_ranges_;
 }
 
 void VadTrimmer::Shutdown() {
