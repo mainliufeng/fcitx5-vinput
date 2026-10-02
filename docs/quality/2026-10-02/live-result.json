@@ -1,0 +1,37 @@
+[
+  {
+    "case": "speech",
+    "start": "()",
+    "stop": "('',)",
+    "final_status": "('idle',)",
+    "recognition_result": {
+      "candidates": [
+        {
+          "source": "raw",
+          "text": "因为远离大陆， 哺乳动物无法长途跋涉而来， 使得巨龟成为克隆群岛主主要的食草动物。"
+        }
+      ],
+      "commit_text": "因为远离大陆， 哺乳动物无法长途跋涉而来， 使得巨龟成为克隆群岛主主要的食草动物。"
+    }
+  },
+  {
+    "case": "white-no-speech",
+    "start": "()",
+    "stop": "('',)",
+    "final_status": "('idle',)",
+    "recognition_result": {
+      "candidates": [],
+      "commit_text": ""
+    }
+  },
+  {
+    "case": "train-no-speech",
+    "start": "()",
+    "stop": "('',)",
+    "final_status": "('idle',)",
+    "recognition_result": {
+      "candidates": [],
+      "commit_text": ""
+    }
+  }
+]
