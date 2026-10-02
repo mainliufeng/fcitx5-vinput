@@ -1,3 +1,4 @@
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -7,21 +8,28 @@
 #include <vector>
 
 #include "daemon/asr/backends/refining_backend.h"
+#include "daemon/asr/runtime/recognition_contract.h"
 
 namespace {
 using namespace vinput::daemon::asr;
 
+struct TextState {
+  std::vector<std::string> outputs;
+  std::size_t cursor = 0;
+};
+
 class TextSession : public RecognitionSession {
 public:
-  TextSession(std::vector<std::string>& outputs, std::size_t& cursor)
-      : outputs_(outputs), cursor_(cursor) {}
+  explicit TextSession(std::shared_ptr<TextState> state) : state_(std::move(state)) {}
   bool PushAudio(std::span<const int16_t>, std::string*) override { return true; }
   bool Finish(std::string*) override {
     if (!finished_) {
-      if (cursor_ < outputs_.size()) {
-        events_.push_back({RecognitionEventKind::FinalText, outputs_[cursor_++], {}});
+      if (state_->cursor < state_->outputs.size()) {
+        events_.push_back({.kind = RecognitionEventKind::FinalText,
+                           .text = state_->outputs.at(state_->cursor++),
+                           .error = {}});
       }
-      events_.push_back({RecognitionEventKind::Completed, {}, {}});
+      events_.push_back({.kind = RecognitionEventKind::Completed, .text = {}, .error = {}});
       finished_ = true;
     }
     return true;
@@ -34,23 +42,23 @@ public:
   }
 
 private:
-  std::vector<std::string>& outputs_;
-  std::size_t& cursor_;
+  std::shared_ptr<TextState> state_;
   bool finished_ = false;
   std::vector<RecognitionEvent> events_;
 };
 
 class TextBackend : public AsrBackend {
 public:
-  explicit TextBackend(std::vector<std::string> outputs) : outputs_(std::move(outputs)) {}
-  BackendDescriptor Describe() const override { return {}; }
+  explicit TextBackend(std::vector<std::string> outputs)
+      : state_(std::make_shared<TextState>(TextState{.outputs = std::move(outputs), .cursor = 0})) {
+  }
+  [[nodiscard]] BackendDescriptor Describe() const override { return {}; }
   std::unique_ptr<RecognitionSession> CreateSession(std::string*) override {
-    return std::make_unique<TextSession>(outputs_, cursor_);
+    return std::make_unique<TextSession>(state_);
   }
 
 private:
-  std::vector<std::string> outputs_;
-  std::size_t cursor_ = 0;
+  std::shared_ptr<TextState> state_;
 };
 
 bool Check(std::vector<std::string> refined, const std::string& expected) {
@@ -59,7 +67,7 @@ bool Check(std::vector<std::string> refined, const std::string& expected) {
       std::make_unique<TextBackend>(std::vector<std::string>{"complete streaming fallback"}),
       std::make_unique<TextBackend>(std::move(refined)), &error);
   auto session = backend->CreateSession(&error);
-  std::vector<int16_t> pcm(16000 * 31, 100);
+  std::vector<int16_t> pcm(std::size_t{16000} * 31, 100);
   if (!session->PushAudio(pcm, &error) || !session->Finish(&error)) {
     return false;
   }

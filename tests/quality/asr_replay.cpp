@@ -2,22 +2,30 @@
 // focus, altering user config, or invoking an unrelated cloud recognizer.
 #include <algorithm>
 #include <chrono>
-#include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
+#include <ratio>
 #include <sherpa-onnx/c-api/c-api.h>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <utility>
+#include <variant>
 #include <vector>
 
 #include "common/config/core_config.h"
+#include "common/config/core_config_types.h"
 
 #include "daemon/asr/backends/refining_backend.h"
 #include "daemon/asr/backends/sherpa_offline_backend.h"
 #include "daemon/asr/backends/sherpa_streaming_backend.h"
+#include "daemon/asr/runtime/recognition_contract.h"
 
 namespace {
 using Clock = std::chrono::steady_clock;
@@ -113,8 +121,8 @@ int main(int argc, char** argv) {
     }
     CoreConfig config = LoadCoreConfig();
     const auto* active = ResolveActiveAsrProvider(config);
-    const auto* local = active ? std::get_if<LocalAsrProvider>(active) : nullptr;
-    if (!local) {
+    const auto* local = active != nullptr ? std::get_if<LocalAsrProvider>(active) : nullptr;
+    if (local == nullptr) {
       throw std::runtime_error("Select a local ASR provider before replay");
     }
     LocalAsrProvider primary = *local;
@@ -147,7 +155,7 @@ int main(int argc, char** argv) {
     std::string line;
     while (std::getline(input, line)) {
       if (!line.empty()) {
-        std::cout << Replay(*backend, nlohmann::json::parse(line)).dump() << std::endl;
+        std::cout << Replay(*backend, nlohmann::json::parse(line)).dump() << '\n';
       }
     }
   } catch (const std::exception& error) {

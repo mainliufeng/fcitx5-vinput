@@ -1,8 +1,11 @@
 #include "daemon/asr/backends/sherpa_streaming_backend.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <iterator>
+#include <memory>
 #include <mutex>
 #include <sherpa-onnx/c-api/c-api.h>
 #include <utility>
@@ -14,6 +17,7 @@
 
 #include "daemon/asr/asr_config.h"
 #include "daemon/asr/hotword_utils.h"
+#include "daemon/asr/runtime/recognition_contract.h"
 #include "daemon/asr/sherpa_json_helpers.h"
 #include "daemon/asr/vad_trimmer.h"
 
@@ -143,17 +147,17 @@ public:
 
     finished_ = true;
     if (vad_) {
-      std::vector<float> samples(debug_pcm_.size());
-      for (std::size_t i = 0; i < debug_pcm_.size(); ++i) {
-        samples[i] = static_cast<float>(debug_pcm_[i]) / 32768.0F;
-      }
+      std::vector<float> samples;
+      samples.reserve(debug_pcm_.size());
+      std::ranges::transform(debug_pcm_, std::back_inserter(samples),
+                             [](int16_t sample) { return static_cast<float>(sample) / 32768.0F; });
       vad_->Trim(samples, 16000);
       if (!vad_->DetectedSpeech()) {
         events_.clear();
         // Empty FinalText clears any displayed partial hypothesis.
-        events_.push_back({RecognitionEventKind::FinalText, {}, {}});
-        events_.push_back({RecognitionEventKind::Completed, {}, {}});
-        if (error) {
+        events_.push_back({.kind = RecognitionEventKind::FinalText, .text = {}, .error = {}});
+        events_.push_back({.kind = RecognitionEventKind::Completed, .text = {}, .error = {}});
+        if (error != nullptr) {
           error->clear();
         }
         return true;

@@ -1,5 +1,6 @@
 // The VAD double supplies speech intervals. The production trimmer must keep
 // their padded union in order, never repeat samples, and preserve disjoint gaps.
+#include <cstddef>
 #include <cstdint>
 #include <iostream>
 #include <numeric>
@@ -11,35 +12,43 @@
 
 struct SherpaOnnxVoiceActivityDetector {};
 namespace {
-SherpaOnnxVoiceActivityDetector detector;
-std::vector<std::pair<int, int>> segments;
-std::size_t cursor = 0;
+struct FixtureState {
+  SherpaOnnxVoiceActivityDetector detector;
+  std::vector<std::pair<int, int>> segments;
+  std::size_t cursor = 0;
+};
+FixtureState& State() {
+  static FixtureState state;
+  return state;
+}
 } // namespace
 
 extern "C" {
 const SherpaOnnxVoiceActivityDetector*
 SherpaOnnxCreateVoiceActivityDetector(const SherpaOnnxVadModelConfig*, float) {
-  return &detector;
+  return &State().detector;
 }
 void SherpaOnnxDestroyVoiceActivityDetector(const SherpaOnnxVoiceActivityDetector*) {}
 void SherpaOnnxVoiceActivityDetectorReset(const SherpaOnnxVoiceActivityDetector*) {
-  cursor = 0;
+  State().cursor = 0;
 }
 void SherpaOnnxVoiceActivityDetectorAcceptWaveform(const SherpaOnnxVoiceActivityDetector*,
                                                    const float*, int32_t) {}
 void SherpaOnnxVoiceActivityDetectorFlush(const SherpaOnnxVoiceActivityDetector*) {}
 int32_t SherpaOnnxVoiceActivityDetectorEmpty(const SherpaOnnxVoiceActivityDetector*) {
-  return cursor == segments.size();
+  return State().cursor == State().segments.size() ? 1 : 0;
 }
 const SherpaOnnxSpeechSegment*
 SherpaOnnxVoiceActivityDetectorFront(const SherpaOnnxVoiceActivityDetector*) {
-  return new SherpaOnnxSpeechSegment{segments[cursor].first, nullptr, segments[cursor].second};
+  const auto& interval = State().segments.at(State().cursor);
+  return new SherpaOnnxSpeechSegment{
+      .start = interval.first, .samples = nullptr, .n = interval.second};
 }
-void SherpaOnnxDestroySpeechSegment(const SherpaOnnxSpeechSegment* segment) {
-  delete segment;
+void SherpaOnnxDestroySpeechSegment(const SherpaOnnxSpeechSegment* p) {
+  delete p;
 }
 void SherpaOnnxVoiceActivityDetectorPop(const SherpaOnnxVoiceActivityDetector*) {
-  ++cursor;
+  ++State().cursor;
 }
 }
 
@@ -51,7 +60,7 @@ int main() {
     return 1;
   }
   // First two protected intervals overlap; third is disjoint.
-  segments = {{3200, 6400}, {12800, 6400}, {60000, 3200}};
+  State().segments = {{3200, 6400}, {12800, 6400}, {60000, 3200}};
   auto actual = trimmer.Trim(input, 16000);
   std::vector<float> expected(input.begin(), input.begin() + 24000);
   expected.insert(expected.end(), input.begin() + 55200, input.begin() + 68000);
@@ -64,13 +73,13 @@ int main() {
     return 1;
   }
   // A fully contained interval must not rewind the consumed position.
-  segments = {{8000, 16000}, {12000, 1000}, {25000, 2000}};
+  State().segments = {{8000, 16000}, {12000, 1000}, {25000, 2000}};
   actual = trimmer.Trim(input, 16000);
   expected.assign(input.begin() + 3200, input.begin() + 31800);
   if (actual != expected) {
     return 1;
   }
-  segments.clear();
+  State().segments.clear();
   if (trimmer.Trim(input, 16000) != input || trimmer.DetectedSpeech() ||
       !trimmer.SpeechRanges().empty()) {
     return 1;

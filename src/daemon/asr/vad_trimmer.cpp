@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <sherpa-onnx/c-api/c-api.h>
+#include <utility>
 
 VadTrimmer::VadTrimmer() = default;
 

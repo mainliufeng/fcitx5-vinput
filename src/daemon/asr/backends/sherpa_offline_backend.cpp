@@ -1,6 +1,7 @@
 #include "daemon/asr/backends/sherpa_offline_backend.h"
 
 #include <cerrno>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
@@ -493,7 +494,7 @@ public:
       // A long chunk can contain several complete utterances. Preserve VAD's
       // speech boundaries instead of packing them into one long attention
       // context, which can cause the offline model to omit whole sentences.
-      if (samples.size() > 16000 * 20 && vad_->SpeechRanges().size() > 1) {
+      if (samples.size() > std::size_t{16000} * 20 && vad_->SpeechRanges().size() > 1) {
         for (const auto& [start, end] : vad_->SpeechRanges()) {
           decode_chunks.emplace_back(samples.begin() + start, samples.begin() + end);
         }
@@ -510,8 +511,8 @@ public:
       if (decoded.empty()) {
         // Let the two-pass caller keep its complete streaming fallback rather
         // than committing a partial transcript with one speech segment missing.
-        events_.push_back({RecognitionEventKind::Completed, {}, {}});
-        if (error) {
+        events_.push_back({.kind = RecognitionEventKind::Completed, .text = {}, .error = {}});
+        if (error != nullptr) {
           error->clear();
         }
         return true;
